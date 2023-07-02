@@ -1,4 +1,5 @@
 import requests
+import datetime
 import os
 from rest_framework import viewsets
 from .models import Song
@@ -9,24 +10,44 @@ from rest_framework import status
 class SongViewSet(viewsets.ModelViewSet):
     queryset = Song.objects.all().order_by('name')
     serializer_class = SongSerializer
+    spotify_access_token = None
+    spotify_token_expires = None
+    genius_access_token = None
+    genius_token_expires = None
 
     def get_spotify_access_token(self):
+
+        if self.spotify_access_token and self.spotify_token_expires > datetime.datetime.now():
+            # Token is still valid
+            return self.spotify_access_token
+
         client_id = os.getenv("SPOTIFY_CLIENT_ID")
         client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
         try:
             response = requests.post('https://accounts.spotify.com/api/token', data={'grant_type': 'client_credentials'}, auth=(client_id, client_secret))
             response.raise_for_status()  # Raise an exception if the request was unsuccessful
-            return response.json().get('access_token')
+            expires_in = response.json().get('expires_in', 0)
+            self.spotify_token_expires = datetime.datetime.now() + datetime.timedelta(seconds=expires_in)
+            self.spotify_access_token = response.json().get('access_token')
+            return self.spotify_access_token
         except requests.exceptions.RequestException as e:
             raise ValueError("Error getting Spotify access token") from e
 
     def get_genius_access_token(self):
+        if self.genius_access_token and self.genius_token_expires > datetime.datetime.now():
+            # Token is still valid
+            return self.genius_access_token
+
         client_id = os.getenv("GENIUS_CLIENT_ID")
         client_secret = os.getenv("GENIUS_CLIENT_SECRET")
         try:
             response = requests.post('https://api.genius.com/oauth/token', data={'grant_type': 'client_credentials'}, auth=(client_id, client_secret))
             response.raise_for_status()  # Raise an exception if the request was unsuccessful
-            return response.json().get('access_token')
+
+            expires_in = response.json().get('expires_in', 0)
+            self.genius_token_expires = datetime.datetime.now() + datetime.timedelta(seconds=expires_in)
+            self.genius_access_token = response.json().get('access_token')
+            return self.genius_access_token
         except requests.exceptions.RequestException as e:
             raise ValueError("Error getting Genius access token") from e
 
@@ -88,6 +109,18 @@ class SongViewSet(viewsets.ModelViewSet):
 
         return tracks
 
+    def get_queryset(self):
+        queryset = Song.objects.all()
+        album = self.request.query_params.get('album', None)
+        genre = self.request.query_params.get('genre', None)
+
+        if album is not None:
+            queryset = queryset.filter(album__icontains=album)
+        
+        if genre is not None:
+            queryset = queryset.filter(genres__icontains=genre)
+        
+        return queryset.order_by('name')
 
     def list(self, request, *args, **kwargs):
         search_term = request.query_params.get('search_term', '')
