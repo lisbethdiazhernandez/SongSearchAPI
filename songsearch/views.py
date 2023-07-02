@@ -6,7 +6,6 @@ from .serializers import SongSerializer
 from rest_framework.response import Response
 from rest_framework import status
 
-
 class SongViewSet(viewsets.ModelViewSet):
     queryset = Song.objects.all().order_by('name')
     serializer_class = SongSerializer
@@ -48,11 +47,17 @@ class SongViewSet(viewsets.ModelViewSet):
             results = response.json().get('response', {}).get('hits', [])
             for result in results:
                 song = result.get('result', {})
-                primary_artist = song.get('primary_artist', {})
-                genres = primary_artist.get('tag_list', [])
-                song['genres'] = ', '.join(genres)
+                song_id = song.get('id')
+                # Make an additional request to get song details
+                response = requests.get(f'https://api.genius.com/songs/{song_id}', headers=headers)
+                response.raise_for_status()  # Raise an exception if the request was unsuccessful
+
+                song_detail = response.json().get('response', {}).get('song', {})
+                album = song_detail.get('album', {})
+                song['album'] = album.get('name', '') if album else 'N/A'
                 release_date_components = song.get('release_date_components', {})
                 song['year_release_date'] = release_date_components.get('year')
+                
             return results
         except requests.exceptions.RequestException as e:
             raise ValueError("Error fetching data from Genius API") from e
@@ -142,12 +147,12 @@ class SongViewSet(viewsets.ModelViewSet):
             Song.objects.create(
                 name=song.get('title', ''),
                 provider_song_id=song.get('id', ''),
-                album='',
+                album=song.get('album', ''),
                 artist=', '.join(artists),
                 album_cover=song.get('song_art_image_url', ''),
                 year_release_date=year_release_date,
-                genres=genres,  
-                duration='',
+                genres='N/A', #Genius does not provide Genres
+                duration='N/A', #Genius does not provide Duration
                 origin='Genius',
             )
 
