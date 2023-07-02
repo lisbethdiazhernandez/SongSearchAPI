@@ -36,6 +36,7 @@ http://localhost:8000/api/song?search_term=sailing
 ```
 
 También puedes filtrar las canciones por el álbum y el género utilizando los parámetros de consulta:
+
 *album* 
 ```bash
 http://localhost:8000/api/song/?search_term=Sailing&album=Christopher Cross
