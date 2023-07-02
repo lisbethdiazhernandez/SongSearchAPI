@@ -1,16 +1,36 @@
 # SongSearchAPI
-Para utilizar el proyecto es necesario realizar primero los siguientes pasos:
+## Descripción
 
-1. Crear el contenedor
+Este proyecto es una API que integra tres servicios de música distintos: Spotify, iTunes y Genius. Permite buscar canciones y proporciona información relevante de las canciones de estos tres proveedores.
+
+## Instalación
+
+Para ejecutar este proyecto localmente usando Docker, sigue estos pasos:
+
+1. Clona este repositorio en tu máquina local.
+2. Asegúrate de tener Docker instalado en tu sistema. Puedes descargar Docker desde [aquí](https://www.docker.com/products/docker-desktop/).
+3. Crea un archivo .env en el directorio raíz del proyecto y agrega las siguientes variables de entorno con los valores apropiados:
+```bash
+SECRET_KEY=<secret key>
+SPOTIFY_CLIENT_ID=<tu client id de Spotify>
+SPOTIFY_CLIENT_SECRET=<tu client secret de Spotify>
+GENIUS_CLIENT_ID=<tu client id de Genius>
+GENIUS_CLIENT_SECRET=<tu client secret de Genius>
+```
+
+1. Construye la imagen de Docker con el comando
 ```bash
 docker build -t song-search-api .
 ```
 
-
-2. Correr el contenedor
+2. ecuta el contenedor de Docker con el comando
 ```bash
 docker run -p 8000:8000 song-search-api
 ```
+La API debería estar disponible en ***localhost:8000***.
 
+## Uso
+Para buscar canciones, realiza una solicitud GET a la ruta ***/song*** con el parámetro de consulta *search_term*. Por ejemplo, para buscar canciones que se llamen 'sailing', puedes usar la URL ***localhost:8000/song?search_term=sailing***.
 
+También puedes filtrar las canciones por el álbum y el género utilizando los parámetros de consulta *album* y *genre*, respectivamente.
 
