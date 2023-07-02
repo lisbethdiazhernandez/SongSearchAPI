@@ -6,6 +6,7 @@ from .models import Song
 from .serializers import SongSerializer
 from rest_framework.response import Response
 from rest_framework import status
+from django.core.cache import cache
 
 class SongViewSet(viewsets.ModelViewSet):
     queryset = Song.objects.all().order_by('name')
@@ -53,59 +54,90 @@ class SongViewSet(viewsets.ModelViewSet):
 
 
     def get_itunes_data(self, search_term):
-        try:
-            response = requests.get(f'https://itunes.apple.com/search?term={search_term}&media=music&entity=song&limit=10')
-            response.raise_for_status()  # Raise an exception if the request was unsuccessful
-            return response.json().get('results', [])
-        except requests.exceptions.RequestException as e:
-            raise ValueError("Error fetching data from iTunes API") from e
+        cache_key = f'itunes_data_{search_term}'
+        data = cache.get(cache_key)
+
+        if not data:
+            try:
+                response = requests.get(f'https://itunes.apple.com/search?term={search_term}&media=music&entity=song&limit=10')
+                response.raise_for_status()  # Raise an exception if the request was unsuccessful
+                data = response.json().get('results', [])
+            except requests.exceptions.RequestException as e:
+                raise ValueError("Error fetching data from iTunes API") from e
+
+            # Cache data for 6 hours
+            cache.set(cache_key, data, 60*60*6)
+        else:
+            data = cache.get(cache_key)
+
+        return data
 
     def get_genius_data(self, search_term, access_token):
-        headers = {'Authorization': f'Bearer {access_token}'}
-        try:
-            response = requests.get('https://api.genius.com/search', params={'q': search_term}, headers=headers)
-            response.raise_for_status()  # Raise an exception if the request was unsuccessful
-            results = response.json().get('response', {}).get('hits', [])
-            for result in results:
-                song = result.get('result', {})
-                song_id = song.get('id')
-                # Make an additional request to get song details
-                response = requests.get(f'https://api.genius.com/songs/{song_id}', headers=headers)
-                response.raise_for_status()  # Raise an exception if the request was unsuccessful
+        cache_key = f'genius_data_{search_term}'
+        data = cache.get(cache_key)
 
-                song_detail = response.json().get('response', {}).get('song', {})
-                album = song_detail.get('album', {})
-                song['album'] = album.get('name', '') if album else 'N/A'
-                release_date_components = song.get('release_date_components', {})
-                song['year_release_date'] = release_date_components.get('year')
-                
-            return results
-        except requests.exceptions.RequestException as e:
-            raise ValueError("Error fetching data from Genius API") from e
+        if not data:
+            headers = {'Authorization': f'Bearer {access_token}'}
+            results = []
+            try:
+                response = requests.get('https://api.genius.com/search', params={'q': search_term}, headers=headers)
+                response.raise_for_status()  # Raise an exception if the request was unsuccessful
+                results = response.json().get('response', {}).get('hits', [])
+                for result in results:
+                    song = result.get('result', {})
+                    song_id = song.get('id')
+                    # Make an additional request to get song details
+                    response = requests.get(f'https://api.genius.com/songs/{song_id}', headers=headers)
+                    response.raise_for_status()  # Raise an exception if the request was unsuccessful
+
+                    song_detail = response.json().get('response', {}).get('song', {})
+                    album = song_detail.get('album', {})
+                    song['album'] = album.get('name', '') if album else 'N/A'
+                    release_date_components = song.get('release_date_components', {})
+                    song['year_release_date'] = release_date_components.get('year')
+
+            except requests.exceptions.RequestException as e:
+                raise ValueError("Error fetching data from Genius API") from e
+
+            # Cache data for 6 hours
+            cache.set(cache_key, results, 60*60*6)
+        else:
+            results = data
+
+        return results
 
 
     def get_spotify_data(self, search_term, access_token):
-        headers = {'Authorization': f'Bearer {access_token}'}
-        tracks = []
-        try:
-            response = requests.get(f'https://api.spotify.com/v1/search', params={'q': search_term, 'type': 'track', 'limit': 10}, headers=headers)
-            response.raise_for_status()  # Raise an exception if the request was unsuccessful
-            tracks_data = response.json().get('tracks', {}).get('items', [])
-            
-            for track_data in tracks_data:
-                track = track_data.copy()  # copy track data to not modify original data
-                artist_id = track_data['artists'][0]['id']  # get the artist id
-                
-                # make a new request to get the artist info to get genres
-                response = requests.get(f'https://api.spotify.com/v1/artists/{artist_id}', headers=headers)
+        cache_key = f'spotify_data_{search_term}'
+        data = cache.get(cache_key)
+
+        if not data:
+            headers = {'Authorization': f'Bearer {access_token}'}
+            tracks = []
+            try:
+                response = requests.get(f'https://api.spotify.com/v1/search', params={'q': search_term, 'type': 'track', 'limit': 10}, headers=headers)
                 response.raise_for_status()  # Raise an exception if the request was unsuccessful
+                tracks_data = response.json().get('tracks', {}).get('items', [])
                 
-                artist_info = response.json()
-                track['artist_genres'] = artist_info.get('genres', [])  # add the artist's genres to the track data
-                
-                tracks.append(track)
-        except requests.exceptions.RequestException as e:
-            raise ValueError("Error fetching data from Spotify API") from e
+                for track_data in tracks_data:
+                    track = track_data.copy()  # copy track data to not modify original data
+                    artist_id = track_data['artists'][0]['id']  # get the artist id
+                    
+                    # make a new request to get the artist info to get genres
+                    response = requests.get(f'https://api.spotify.com/v1/artists/{artist_id}', headers=headers)
+                    response.raise_for_status()  # Raise an exception if the request was unsuccessful
+                    
+                    artist_info = response.json()
+                    track['artist_genres'] = artist_info.get('genres', [])  # add the artist's genres to the track data
+                    
+                    tracks.append(track)
+            except requests.exceptions.RequestException as e:
+                raise ValueError("Error fetching data from Spotify API") from e
+
+            # Cache data for 6 hours
+            cache.set(cache_key, tracks, 60*60*6)
+        else:
+            tracks = data
 
         return tracks
 
