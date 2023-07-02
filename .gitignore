@@ -1,0 +1,12 @@
+# No .env files
+.env
+
+# Ignore cache files
+__pycache__
+
+# Ignore build / dist directories
+build/
+dist/
+
+# Ignore .DS_Store
+.DS_Store
