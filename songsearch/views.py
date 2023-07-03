@@ -24,7 +24,9 @@ class Provider:
         """
         Clean the search term that the user entered, as it might contain malicious data
         """
-        return re.sub(r'[^a-zA-Z0-9_]', '', parameter)
+        cleaned_parameter = re.sub(r'[^a-zA-Z0-9_\s]', '', parameter)  # Remove special characters except spaces
+        cleaned_parameter = cleaned_parameter.strip()
+        return cleaned_parameter
 
     def get_data(self, search_term: str):
         raise NotImplementedError
@@ -253,10 +255,12 @@ class SongViewSet(viewsets.ViewSet):
        # Generate a unique cache key
         cache_key_parts = ['song_data', search_term]
         if album_filter:
-            album_filter = re.sub(r'[^a-zA-Z0-9_]', '', album_filter)
+            album_filter = re.sub(r'[^a-zA-Z0-9_\s]', '', album_filter) # Remove special characters except spaces
+            album_filter = album_filter.strip()
             cache_key_parts.append(album_filter)
         if genre_filter:
-            genre_filter = re.sub(r'[^a-zA-Z0-9_]', '', genre_filter)
+            genre_filter =  re.sub(r'[^a-zA-Z0-9_\s]', '', genre_filter)
+            genre_filter = genre_filter.strip()
             cache_key_parts.append(genre_filter)
         cache_key = hashlib.md5(':'.join(cache_key_parts).encode('utf-8')).hexdigest()
 
