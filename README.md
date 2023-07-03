@@ -29,6 +29,12 @@ docker run -p 8000:8000 song-search-api
 ```
 La API debería estar disponible en ***localhost:8000***.
 
+## API reference
+Puedes encontrarlo en 
+```bash
+http://localhost:8000/api/docs/
+```
+
 ## Uso
 Para buscar canciones, realiza una solicitud GET a la ruta ***api/song*** con el parámetro de consulta *search_term*. Por ejemplo, para buscar canciones que se llamen 'sailing', puedes usar la URL 
 ```bash
