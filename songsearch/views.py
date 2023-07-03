@@ -2,20 +2,22 @@ import requests
 import re
 import datetime
 import os
-from rest_framework import viewsets
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import viewsets, status, viewsets
 from .models import Song
 from .serializers import SongSerializer
-from rest_framework.response import Response
-from rest_framework import status, viewsets
 from django.core.cache import cache
 import hashlib
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
+from SongSearchAPI.authentication import TokenAuthentication
 
 class Provider:
     def __init__(self, name):
         self.name = name
 
+    # Method to get access token, to be overridden by child classes
     def get_access_token(self):
         raise NotImplementedError
 
@@ -236,12 +238,17 @@ class Genius(Provider):
 
 
 class SongViewSet(viewsets.ViewSet):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]  # Ensures that only authenticated requests are allowed
+
     @swagger_auto_schema(
         manual_parameters=[
             openapi.Parameter('search_term', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Search term'),
             openapi.Parameter('album', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Album filter (optional)', required=False),
             openapi.Parameter('genre', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Genre filter (optional)', required=False),
-        ]
+            openapi.Parameter('Authorization', openapi.IN_HEADER, type=openapi.TYPE_STRING, description='Bearer {token}', format='Bearer')
+        ],
+        responses={200: 'OK', 401: 'Unauthorized'}
     )
 
     def list(self, request):
