@@ -35,6 +35,24 @@ Puedes encontrarlo en
 http://localhost:8000/api/docs/
 ```
 
+*Importante:* Antes de realizar las solicitudes a la API, debes crear un token de autenticación. Para ello, sigue estos pasos:
+1. Accede a la ruta api/token/ en tu navegador o mediante herramientas como cURL o Postman.
+2. Envía una solicitud POST con los siguientes datos:
+    URL: http://localhost:8000/api/token/
+    Cabeceras (Headers):
+    Content-Type: application/json
+    Cuerpo (Body):
+        ```json
+        {
+        "username": "ejemplo",
+        "password": "contraseña"
+        }
+        ```
+    _Por favor considera que el username y password son según las credenciales indicadas al crear el super user en el Dockerfile_
+    
+3. Recibirás una respuesta que contiene el token de acceso (access token).
+4. Copia el token de acceso y úsalo en las solicitudes a la API como encabezado de autorización (Authorization) con el formato: Bearer <token_de_acceso>.
+
 ## Uso
 Para buscar canciones, realiza una solicitud GET a la ruta ***api/song*** con el parámetro de consulta *search_term*. Por ejemplo, para buscar canciones que se llamen 'sailing', puedes usar la URL 
 ```bash

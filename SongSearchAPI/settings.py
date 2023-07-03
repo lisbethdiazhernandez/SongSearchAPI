@@ -42,8 +42,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'drf_yasg',
+    'rest_framework_simplejwt',
     'songsearch',
+    'drf_yasg',
 ]
 
 MIDDLEWARE = [
@@ -111,6 +112,14 @@ CACHES = {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
         'LOCATION': 'unique-snowflake',
     }
+}
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+        'SongSearchAPI.authentication.TokenAuthentication',
+    ],
 }
 
 # Internationalization
