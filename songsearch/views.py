@@ -6,9 +6,11 @@ from rest_framework import viewsets
 from .models import Song
 from .serializers import SongSerializer
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, viewsets
 from django.core.cache import cache
 import hashlib
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 
 class Provider:
     def __init__(self, name):
@@ -94,6 +96,7 @@ class Spotify(Provider):
         cleaned_search_term = self.clean_search_term(search_term)
         headers = {'Authorization': f'Bearer {access_token}'}
 
+        tracks = []
         try:
             response = requests.get(
                 f'https://api.spotify.com/v1/search',
@@ -103,7 +106,7 @@ class Spotify(Provider):
             response.raise_for_status()  # Raise an exception if the request was unsuccessful
             tracks_data = response.json().get('tracks', {}).get('items', [])
 
-            tracks = []
+            
             for track_data in tracks_data:
                 track = track_data.copy()  # Copy track data to not modify the original data
                 artist_id = track_data['artists'][0]['id']  # Get the artist id
@@ -117,9 +120,10 @@ class Spotify(Provider):
 
                 tracks.append(track)
 
-            return tracks
         except requests.exceptions.RequestException as e:
             raise ValueError("Error fetching data from Spotify API") from e
+        
+        return tracks
 
     def get_song_details(self, data):
         
@@ -230,6 +234,14 @@ class Genius(Provider):
 
 
 class SongViewSet(viewsets.ViewSet):
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter('search_term', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Search term'),
+            openapi.Parameter('album', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Album filter (optional)', required=False),
+            openapi.Parameter('genre', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Genre filter (optional)', required=False),
+        ]
+    )
+
     def list(self, request):
         search_term = request.GET.get('search_term')
         album_filter = request.GET.get('album')
