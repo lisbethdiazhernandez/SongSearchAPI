@@ -202,8 +202,8 @@ class Genius(Provider):
                 album = song_detail.get('album', {})
                 song['album'] = album.get('name', '') if album else 'N/A'
                 release_date_components = song.get('release_date_components', {})
-                song['year_release_date'] = release_date_components.get('year')
-            
+                song['year_release_date'] = release_date_components.get('year') if release_date_components else 'N/A'
+        
                 tracks.append(song)
 
             return tracks
